@@ -1,0 +1,18 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+**/appsettings.*.local.json
+**/secrets.json
+
+# .NET build and IDE output
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+
+# Local logs and database exports
+*.log
+*.dump
+*.sql.gz
