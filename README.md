@@ -2,7 +2,7 @@
 
 Laboratório de segurança de aplicações em C# / ASP.NET Core e PostgreSQL. O ciclo de trabalho é estudar uma decisão de engenharia, formular uma hipótese, reproduzir uma falha **somente em ambiente local**, corrigi-la, testar a correção e explicar seus limites.
 
-**Estado atual:** a API oferece apenas `GET /health`. Não existem endpoints de anotações nem exemplos vulneráveis em execução. O PostgreSQL recebe dois usuários e duas anotações fictícias na primeira criação do volume pelo Docker Compose, mas a API ainda não se conecta ao banco.
+**Estado atual:** a API oferece `GET /health` e rotas mínimas de anotações privadas que recusam todas as requisições com 403. Não há autenticação, autorização por proprietário nem exemplo vulnerável em execução. O PostgreSQL recebe dois usuários e duas anotações fictícias na primeira criação do volume pelo Docker Compose, mas a API ainda não se conecta ao banco.
 
 ## Pré-requisitos
 
@@ -29,9 +29,10 @@ Em outro terminal, com a API em execução:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:5080/health
+try { Invoke-WebRequest http://127.0.0.1:5080/api/notes/1 -ErrorAction Stop } catch { [int]$_.Exception.Response.StatusCode }
 ```
 
-A resposta esperada é `status: ok`. A consulta SQL deve mostrar as anotações `1/user-a` e `2/user-b`. O PostgreSQL fica acessível apenas em `127.0.0.1:5433`; a API fica em `127.0.0.1:5080` pelo perfil `local`. Para encerrar o banco, execute `docker compose down`. O volume de dados local permanece para próximas sessões.
+A resposta esperada é `status: ok` para `/health` e `403` para `/api/notes/1`. A consulta SQL deve mostrar as anotações `1/user-a` e `2/user-b`. O PostgreSQL fica acessível apenas em `127.0.0.1:5433`; a API fica em `127.0.0.1:5080` pelo perfil `local`. Para encerrar o banco, execute `docker compose down`. O volume de dados local permanece para próximas sessões.
 
 O script `db/seed.sql` é executado automaticamente apenas quando o volume do PostgreSQL é criado. Se o volume já existia antes de o script ser adicionado, aplique-o uma vez sem apagar os dados existentes:
 
@@ -43,7 +44,7 @@ O arquivo `.env` é ignorado pelo Git. Use somente dados e credenciais fictício
 
 ## O que os testes verificam agora
 
-Os testes sobem a API em memória no ambiente `Production`, confirmam a resposta de `/health` e verificam que rotas de anotações privadas ainda não estão disponíveis. Eles não demonstram autenticação, autorização, acesso ao PostgreSQL nem segurança geral da API.
+Os testes sobem a API em memória no ambiente `Production`, confirmam a resposta de `/health` e verificam que leitura, criação, alteração e exclusão de anotações são recusadas mesmo quando o cliente envia um ID de usuário, `ownerId` ou conteúdo. Eles não demonstram autenticação, autorização por proprietário, acesso ao PostgreSQL nem segurança geral da API.
 
 ## Organização e próximos passos
 

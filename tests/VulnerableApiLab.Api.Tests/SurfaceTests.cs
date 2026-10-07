@@ -27,15 +27,44 @@ public sealed class SurfaceTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal("ok", body?.Status);
     }
 
-    [Theory]
-    [InlineData("/notes")]
-    [InlineData("/notes/1")]
-    [InlineData("/api/notes/1")]
-    public async Task Private_note_routes_are_not_exposed_before_authorization_exists(string path)
+    [Fact]
+    public async Task Anonymous_reader_cannot_access_a_private_note()
     {
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync(path);
+        using var response = await client.GetAsync("/api/notes/1");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("GET", "/api/notes/1?ownerId=user-a")]
+    [InlineData("PUT", "/api/notes/1")]
+    [InlineData("DELETE", "/api/notes/1")]
+    [InlineData("POST", "/api/notes")]
+    public async Task Client_supplied_identity_does_not_unlock_private_notes(string method, string path)
+    {
+        using var client = _factory.CreateClient();
+        using var request = new HttpRequestMessage(new HttpMethod(method), path);
+        request.Headers.TryAddWithoutValidation("X-Lab-User", "user-a");
+        if (method is "POST" or "PUT")
+        {
+            request.Content = JsonContent.Create(new { ownerId = "user-a", content = "changed" });
+        }
+
+        using var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(body);
+    }
+
+    [Fact]
+    public async Task Unregistered_note_path_stays_not_found()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/notes/1");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }

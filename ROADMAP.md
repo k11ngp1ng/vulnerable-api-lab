@@ -4,7 +4,7 @@
 
 O laboratório conecta decisões de engenharia de software a falhas e defesas de segurança. A primeira semana cobre fundamentos de **Application Security** em uma API própria. A meta é explicar e demonstrar cada resultado, não apenas executar ferramentas ou colecionar vulnerabilidades.
 
-O repositório indicado para todo o trabalho é `https://github.com/k11ngp1ng/vulnerable-api-lab`. O remoto local `origin` foi configurado para esse endereço em 2026-10-07. O baseline foi registrado em commit local; nenhum `push` foi feito nesta etapa.
+O repositório indicado para todo o trabalho é `https://github.com/k11ngp1ng/vulnerable-api-lab`. O remoto local `origin` foi configurado para esse endereço em 2026-10-07, e o baseline foi enviado ao branch `master`.
 
 ### Resultado esperado do primeiro ciclo
 
@@ -21,8 +21,8 @@ Ao final, outra pessoa deve conseguir entender quais ativos a API protege, onde 
 
 ### Estado verificado em 2026-10-07
 
-- **Etapa 0 concluída no ambiente local testado:** SDK .NET 10.0.401; Docker Engine 29.6.2; PostgreSQL 17 pelo Compose, vinculado a `127.0.0.1:5433`, com dois usuários e duas anotações fictícias; API mínima em `127.0.0.1:5080`; `GET /health` retornou 200; consulta autenticada `SELECT 1` no banco retornou `1` e a consulta de anotações retornou `1/user-a` e `2/user-b`; quatro testes passaram. O README contém os comandos de reprodução. A API ainda não se conecta ao banco.
-- **Dia 1 — análise concluída:** [modelo de ameaças](docs/threat-model.md) com ativos, atores, entradas controladas pelo cliente, limites de confiança, matriz de acesso esperada e três riscos priorizados. Não existe rota de anotações privadas, pois autenticação e autorização ainda não foram implementadas. Os testes confirmam essa ausência no ambiente `Production`.
+- **Etapa 0 concluída no ambiente local testado:** SDK .NET 10.0.401; Docker Engine 29.6.2; PostgreSQL 17 pelo Compose, vinculado a `127.0.0.1:5433`, com dois usuários e duas anotações fictícias; API mínima em `127.0.0.1:5080`; `GET /health` retornou 200; consulta autenticada `SELECT 1` no banco retornou `1` e a consulta de anotações retornou `1/user-a` e `2/user-b`. O README contém os comandos de reprodução. A API ainda não se conecta ao banco.
+- **Dia 1 — superfície mínima implementada e verificada:** [modelo de ameaças](docs/threat-model.md) com ativos, atores, entradas controladas pelo cliente, limites de confiança, matriz de acesso esperada e três riscos priorizados. As rotas de anotações existem, mas recusam todas as requisições com 403 até que autenticação e autorização sejam implementadas. Sete testes passaram no ambiente `Production`; uma requisição local com identidade informada pelo cliente também retornou 403. A matriz de propriedade continua hipótese para o Dia 4.
 - **Limite da verificação:** a auditoria de vulnerabilidades dos pacotes NuGet não conseguiu consultar `api.nuget.org` neste ambiente (`NU1900`). Os testes não demonstram segurança geral nem os controles planejados para as próximas etapas.
 
 ### Etapa 0 — preparar o laboratório

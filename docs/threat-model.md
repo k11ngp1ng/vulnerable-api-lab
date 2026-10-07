@@ -1,10 +1,17 @@
-# Modelo de ameaças — anotações privadas (rascunho)
+# Modelo de ameaças — anotações privadas
 
-**Estado em 2026-10-07:** análise de desenho do Dia 1. A API mínima, o banco local com dois usuários e duas anotações fictícias, e testes de superfície existem, mas ainda não há rota de anotações nem vínculo da API com o banco. As decisões e riscos abaixo são hipóteses a verificar em experimentos futuros, não resultados de um teste de autorização.
+**Estado em 2026-10-07:** análise e superfície mínima do Dia 1. A API tem rotas de anotações que recusam todas as requisições com 403 enquanto não há autenticação e autorização. O banco local contém dois usuários e duas anotações fictícias, mas a API ainda não o acessa. As regras de propriedade abaixo continuam hipóteses para experimentos futuros, não resultados de um teste de autorização.
 
 ## Pergunta
 
 Se uma API permite que cada pessoa mantenha anotações privadas, em quais pontos ela precisa decidir quem pode ler ou alterar cada anotação?
+
+## Conceitos aplicados ao exemplo
+
+- **Confidencialidade:** o texto de uma anotação deve ser visto apenas por seu proprietário. **Integridade:** outra pessoa não deve alterar o texto nem o vínculo de propriedade. **Disponibilidade:** o serviço deve continuar utilizável para quem tem permissão.
+- **Ativo:** conteúdo e vínculo de propriedade das anotações. **Ameaça:** alguém tenta ler ou alterar uma anotação alheia. **Vulnerabilidade hipotética:** a API confia em um `ownerId` enviado pelo cliente. **Risco:** essa decisão poderia expor ou modificar dados privados; a ocorrência e o impacto ainda não foram demonstrados.
+- **Superfície de ataque:** rota, ID, parâmetros, corpo e cabeçalhos das requisições HTTP. **Limite de confiança:** esses valores entram na API vindos de um cliente que pode alterá-los.
+- **Autenticação:** estabelecer de modo confiável quem faz a chamada. **Autorização:** decidir se essa identidade pode executar uma operação sobre uma anotação específica. **Menor privilégio:** conceder apenas as operações necessárias sobre as próprias anotações.
 
 ## Escopo e fluxo planejado
 
@@ -35,6 +42,19 @@ O cliente controla a rota, o ID pedido e o conteúdo enviado. A identidade decla
 
 O primeiro limite de confiança é entre cliente e API. O segundo é entre a decisão da API e a leitura ou escrita no banco. Para cada operação sobre uma anotação, a API precisa associar a identidade autenticada ao proprietário do registro antes de devolver ou modificar o conteúdo.
 
+## Superfície implementada e observada
+
+| Requisição | Resultado atual | Motivo |
+| --- | --- | --- |
+| `GET /health` | 200 | Endpoint público sem dados privados. |
+| `GET /api/notes/{id}` | 403 | Leitura privada fechada até existir autenticação e autorização. |
+| `POST /api/notes` | 403 | Criação privada fechada. |
+| `PUT /api/notes/{id}` e `DELETE /api/notes/{id}` | 403 | Alteração e exclusão privadas fechadas. |
+
+O cliente pode enviar `id`, `ownerId`, conteúdo e cabeçalhos como `X-Lab-User`, mas nenhum deles é aceito como prova de identidade. Sete testes em `Production` verificaram a resposta pública e as recusas. Em execução local, `GET /api/notes/1?ownerId=user-a` com `X-Lab-User: user-a` retornou 403. A API não consultou o banco nessa requisição.
+
+O 403 é uma recusa temporária enquanto nenhum mecanismo de login existe. Ele não indica que uma decisão de autorização por proprietário foi tomada. Quando a autenticação for implementada, os códigos para pessoa anônima e pessoa autenticada sem permissão serão definidos e testados separadamente.
+
 ## Matriz de acesso esperada
 
 Esta é uma regra de desenho para os futuros endpoints, ainda não um comportamento implementado.
@@ -55,4 +75,4 @@ Esta é uma regra de desenho para os futuros endpoints, ainda não um comportame
 
 ## Limites e próximo experimento
 
-Este desenho ainda não prova que a API implementa os controles de acesso. A Etapa 0 criou e verificou a API local sem expor rotas privadas. O próximo experimento pode preparar dados fictícios e consultas no PostgreSQL sem registrar endpoints vulneráveis. A implementação e a demonstração controlada de autorização por objeto pertencem ao Dia 4, após autenticação mínima.
+O comportamento atual prova apenas que a superfície de anotações está fechada nas condições testadas. Ele não prova que o proprietário conseguirá acesso nem que outra pessoa autenticada será recusada quando a funcionalidade existir. O próximo experimento pode consultar os dados fictícios no PostgreSQL sem registrar endpoints vulneráveis. A implementação e a demonstração controlada de autorização por objeto pertencem ao Dia 4, após autenticação mínima.

@@ -8,7 +8,7 @@ I mapped three actors: the owner, another signed-in user, and an anonymous user.
 
 That gave me three hypotheses to test locally: unauthorized reads, unauthorized changes, and creating a note with an owner chosen by the client.
 
-I haven't reproduced a vulnerability yet. The local API currently exposes only a health endpoint, and four baseline tests confirm that private-note routes are absent. For now, the key lesson from the model is simple: **authentication tells the API who is calling; authorization decides what that person can do with a specific resource.**
+I haven't reproduced a vulnerability yet. The local API now keeps its private-note routes closed, and seven baseline tests verify that a client-supplied identity does not open them. For now, the key lesson from the model is simple: **authentication tells the API who is calling; authorization decides what that person can do with a specific resource.**
 
 Next: turn these hypotheses into local tests with fictional users as the API grows.
 

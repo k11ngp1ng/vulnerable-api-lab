@@ -25,3 +25,15 @@
 - **Evidência compartilhável:** modelo de fluxo e tabela de riscos em [threat-model.md](threat-model.md); baseline executável e testes de superfície sem dados sensíveis.
 - **Público:** desenvolvedores que estão começando a pensar em segurança de APIs.
 - **Decisão:** rascunho conceitual em inglês para revisão; não apresentar como vulnerabilidade reproduzida.
+
+## 2026-10-07 — Dia 1: superfície de anotações fechada
+
+- **Pergunta e hipótese:** o que a API deve fazer quando recebe um pedido de anotação privada antes de existir um mecanismo confiável de autenticação? Hipótese: recusar todas as operações e não interpretar `ownerId` ou cabeçalhos fornecidos pelo cliente como identidade.
+- **Conceito estudado e entendimento anterior:** a rota e o ID fazem parte da superfície de ataque, mas não conferem direito de acesso. A matriz desejada por proprietário continua distinta do comportamento temporário de recusa total.
+- **Experimento e ambiente:** registrei `GET`, `POST`, `PUT` e `DELETE` para anotações com resposta 403. Executei testes em memória no ambiente `Production` e uma requisição HTTP pelo loopback local com `ownerId=user-a` e `X-Lab-User: user-a`.
+- **Resultado observado e evidência:** sete testes passaram. `/health` retornou 200 e o pedido de leitura com identidade informada pelo cliente retornou 403. Nenhuma rota consultou o banco ou devolveu conteúdo de anotação.
+- **Causa-raiz e impacto:** nenhuma falha foi reproduzida. Se o servidor aceitasse `ownerId` ou um cabeçalho arbitrário como prova de identidade, uma pessoa poderia escolher o proprietário aparente do pedido; esta é uma hipótese de risco, ainda não um comportamento observado.
+- **Mitigação e verificação:** as rotas privadas permanecem fechadas até haver autenticação e autorização verificáveis. Os testes cobrem leitura anônima e tentativas de informar identidade em leitura, criação, alteração e exclusão.
+- **Limites do teste e riscos restantes:** o 403 atual não prova autorização por proprietário. Não há fluxo de login, consulta do banco pela API, nem teste de proprietário versus outra pessoa autenticada. A auditoria de pacotes continua indisponível neste ambiente (`NU1900`).
+- **O que preciso explicar com minhas palavras:** por que o ID e o `ownerId` são entradas não confiáveis e em qual ponto a API deve comparar a identidade autenticada com o proprietário persistido.
+- **Dúvidas e próxima pergunta:** no futuro, qual resposta deve diferenciar pessoa anônima de pessoa autenticada sem permissão? Antes disso, como a consulta SQL pode manter entrada do cliente separada da estrutura da consulta?
