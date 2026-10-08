@@ -2,7 +2,7 @@
 
 Laboratório de segurança de aplicações em C# / ASP.NET Core e PostgreSQL. O ciclo de trabalho é estudar uma decisão de engenharia, formular uma hipótese, reproduzir uma falha **somente em ambiente local**, corrigi-la, testar a correção e explicar seus limites.
 
-**Estado atual:** a API oferece `GET /health` e rotas mínimas de anotações privadas que recusam todas as requisições com 403. Não há autenticação, autorização por proprietário nem exemplo vulnerável em execução. O PostgreSQL recebe dois usuários e duas anotações fictícias na primeira criação do volume pelo Docker Compose, mas a API ainda não se conecta ao banco.
+**Estado atual:** a API oferece `GET /health` e rotas mínimas de anotações privadas que recusam todas as requisições com 403. Não há autenticação nem autorização por proprietário. O Dia 2 acrescentou uma busca parametrizada no código da API, sem rota HTTP, e um exemplo deliberadamente inseguro apenas no projeto de testes. O PostgreSQL contém dois usuários e duas anotações fictícias.
 
 ## Pré-requisitos
 
@@ -42,9 +42,23 @@ Get-Content -Raw db/seed.sql | docker compose exec -T db psql -v ON_ERROR_STOP=1
 
 O arquivo `.env` é ignorado pelo Git. Use somente dados e credenciais fictícios. Não altere o vínculo dos serviços para uma interface pública. Antes de qualquer commit ou publicação, revise `git status`, o diff e os arquivos incluídos para evitar segredos e dados reais.
 
+### Experimento do Dia 2 no PostgreSQL local
+
+Os dois testes de SQL injection precisam de `LAB_DB_CONNECTION_STRING`. Com o banco iniciado e as duas anotações de `db/seed.sql` presentes, execute:
+
+```powershell
+$passwordLine = Get-Content .env | Where-Object { $_ -match '^LAB_DB_PASSWORD=' } | Select-Object -First 1
+$labPassword = $passwordLine.Substring('LAB_DB_PASSWORD='.Length)
+$env:LAB_DB_CONNECTION_STRING = "Host=127.0.0.1;Port=5433;Database=vulnerable_api_lab;Username=lab_user;Password=$labPassword"
+dotnet test tests/VulnerableApiLab.Api.Tests/VulnerableApiLab.Api.Tests.csproj
+Remove-Item Env:LAB_DB_CONNECTION_STRING
+```
+
+A conexão é validada para o banco local do laboratório. Sem essa variável, os testes de integração são ignorados; uma execução da suíte nessa condição não verifica o Dia 2. Consulte [a investigação](docs/experiments/sql-injection.md) para a hipótese, o resultado e os limites.
+
 ## O que os testes verificam agora
 
-Os testes sobem a API em memória no ambiente `Production`, confirmam a resposta de `/health` e verificam que leitura, criação, alteração e exclusão de anotações são recusadas mesmo quando o cliente envia um ID de usuário, `ownerId` ou conteúdo. Eles não demonstram autenticação, autorização por proprietário, acesso ao PostgreSQL nem segurança geral da API.
+Os testes de superfície sobem a API em memória no ambiente `Production`, confirmam a resposta de `/health` e verificam que leitura, criação, alteração e exclusão de anotações são recusadas mesmo quando o cliente envia um ID de usuário, `ownerId` ou conteúdo. Dois testes adicionais usam o PostgreSQL local para comparar uma busca concatenada com a consulta parametrizada e verificar um título normal. A suíte passou com nove testes quando a conexão local foi fornecida. Ela não demonstra autenticação, autorização por proprietário nem segurança geral da API.
 
 ## Organização e próximos passos
 
@@ -52,5 +66,7 @@ Os testes sobem a API em memória no ambiente `Production`, confirmam a resposta
 - [Modelo de ameaças](docs/threat-model.md): ativo, fluxo, limites de confiança e riscos priorizados para anotações privadas.
 - [Estratégia de isolamento](docs/lab-safety.md): onde ficarão demonstrações intencionalmente inseguras.
 - [Diário de segurança](docs/security-journal.md): evidências, dúvidas e limites por sessão.
+- [SQL injection — Dia 2](docs/experiments/sql-injection.md): hipótese, reprodução local, correção e regressão.
+- [Matriz de competências](docs/competency-matrix.md): níveis vinculados a evidências do repositório.
 
-O próximo passo técnico é conectar um recurso mínimo de dados fictícios ao PostgreSQL para o experimento local de consulta parametrizada, mantendo qualquer versão insegura exclusivamente no código de testes. A implementação de anotações privadas depende de autenticação e autorização verificadas em etapas posteriores.
+O próximo passo técnico é o Dia 3: investigar armazenamento e verificação de senhas fictícias para uma autenticação mínima. As rotas de anotações privadas continuam fechadas até que a autenticação e a autorização por objeto sejam verificadas.

@@ -23,7 +23,8 @@ Ao final, outra pessoa deve conseguir entender quais ativos a API protege, onde 
 
 - **Etapa 0 concluída no ambiente local testado:** SDK .NET 10.0.401; Docker Engine 29.6.2; PostgreSQL 17 pelo Compose, vinculado a `127.0.0.1:5433`, com dois usuários e duas anotações fictícias; API mínima em `127.0.0.1:5080`; `GET /health` retornou 200; consulta autenticada `SELECT 1` no banco retornou `1` e a consulta de anotações retornou `1/user-a` e `2/user-b`. O README contém os comandos de reprodução. A API ainda não se conecta ao banco.
 - **Dia 1 — superfície mínima implementada e verificada:** [modelo de ameaças](docs/threat-model.md) com ativos, atores, entradas controladas pelo cliente, limites de confiança, matriz de acesso esperada e três riscos priorizados. As rotas de anotações existem, mas recusam todas as requisições com 403 até que autenticação e autorização sejam implementadas. Sete testes passaram no ambiente `Production`; uma requisição local com identidade informada pelo cliente também retornou 403. A matriz de propriedade continua hipótese para o Dia 4.
-- **Limite da verificação:** a auditoria de vulnerabilidades dos pacotes NuGet não conseguiu consultar `api.nuget.org` neste ambiente (`NU1900`). Os testes não demonstram segurança geral nem os controles planejados para as próximas etapas.
+- **Dia 2 — concluído no PostgreSQL local em 2026-10-08:** a busca concatenada em código de teste retornou as duas anotações fictícias para uma entrada que alterou o predicado; a versão parametrizada em `NoteLookup.cs` retornou zero. A busca normal retornou apenas o ID 1 nas duas versões. Nove testes passaram com `LAB_DB_CONNECTION_STRING` apontando para o banco local. A investigação está em [docs/experiments/sql-injection.md](docs/experiments/sql-injection.md). Nenhuma rota vulnerável foi registrada.
+- **Limite da verificação:** a busca parametrizada ainda não é exposta por HTTP; as rotas privadas seguem fechadas. Os testes de integração são ignorados sem a variável de conexão local. A auditoria NuGet não foi repetida como verificação de segurança de dependências. Os testes não demonstram segurança geral nem os controles das próximas etapas.
 
 ### Etapa 0 — preparar o laboratório
 
@@ -130,4 +131,4 @@ Esses temas permanecem no mesmo repositório enquanto fizer sentido para a evolu
 
 ## Próxima ação imediata
 
-Iniciar a **Etapa 0**: conferir ferramentas instaladas, escolher versões, preparar a estrutura mínima da API e dos testes, e validar a execução local. Em seguida, escrever o primeiro modelo de ameaças antes de implementar as vulnerabilidades.
+Iniciar o **Dia 3**: estudar armazenamento e verificação de senhas, formular uma hipótese sobre senhas recuperáveis e implementar um fluxo mínimo com usuários fictícios. As rotas privadas só poderão ser abertas após verificar autenticação e autorização por objeto.

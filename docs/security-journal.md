@@ -37,3 +37,29 @@
 - **Limites do teste e riscos restantes:** o 403 atual não prova autorização por proprietário. Não há fluxo de login, consulta do banco pela API, nem teste de proprietário versus outra pessoa autenticada. A auditoria de pacotes continua indisponível neste ambiente (`NU1900`).
 - **O que preciso explicar com minhas palavras:** por que o ID e o `ownerId` são entradas não confiáveis e em qual ponto a API deve comparar a identidade autenticada com o proprietário persistido.
 - **Dúvidas e próxima pergunta:** no futuro, qual resposta deve diferenciar pessoa anônima de pessoa autenticada sem permissão? Antes disso, como a consulta SQL pode manter entrada do cliente separada da estrutura da consulta?
+
+## 2026-10-08 — Dia 2: entrada como dado ou instrução SQL
+
+- **Pergunta e hipótese:** um título com sintaxe SQL mudaria o filtro se fosse concatenado no comando? Hipótese: a concatenação permitiria ampliar o predicado; a parametrização manteria a entrada como um valor literal.
+- **Conceito estudado e entendimento anterior:** entrada controlada pelo chamador atravessa a fronteira entre aplicação e banco. Validação de formato pode atender regras de negócio, mas não substitui a separação entre texto SQL e parâmetros. A proteção de um ORM depende de como a consulta é construída. Consulte a [investigação](experiments/sql-injection.md) e as fontes oficiais nela vinculadas.
+- **Experimento e ambiente:** PostgreSQL 17 do Compose em `127.0.0.1:5433`, duas anotações fictícias do seed, Npgsql 10.0.3, uma consulta concatenada apenas no teste e uma busca parametrizada no código da API, ainda sem rota HTTP. A conexão de teste foi limitada ao banco local.
+- **Resultado observado e evidência:** a entrada `' OR 1=1 --` devolveu IDs 1 e 2 na consulta concatenada e nenhum ID na parametrizada. O título `Lab note A` devolveu apenas o ID 1 nas duas. Nove testes passaram com a variável de conexão local configurada: sete testes de superfície e dois de integração. O banco retornou `1|Lab note A` e `2|Lab note B` antes do teste.
+- **Causa-raiz e impacto:** a interpolação incluiu texto não confiável na gramática SQL; a aspa, o operador e o comentário alteraram o predicado. O impacto observado foi ampliar a leitura de IDs fictícios. Não houve exposição de conteúdo por HTTP.
+- **Mitigação e verificação:** `NoteLookup.FindIdsByTitleAsync` mantém o comando fixo e envia o título como parâmetro posicional `$1`. O teste adversário verifica que a entrada não altera o filtro, e o teste normal verifica a busca exata. A API não registra essa busca como endpoint.
+- **Limites do teste e riscos restantes:** a execução depende do banco local e dos dois registros do seed; sem `LAB_DB_CONNECTION_STRING`, os testes de integração são ignorados. A busca é só de leitura e cobre um predicado e uma entrada. Não há autenticação ou autorização por proprietário; todas as rotas privadas continuam fechadas.
+- **O que mudou no meu entendimento:** o problema não é a presença de caracteres especiais em si, mas o ponto em que um valor controlado pelo chamador passa a ser analisado como parte da instrução. Parametrizar mantém esse limite explícito e preserva uma busca normal.
+- **Dúvidas e próxima pergunta:** como demonstrar que a senha fictícia não precisa ser recuperável para permitir login e como testar o fluxo sem vazar senhas em banco ou logs? Essa é a pergunta do Dia 3.
+
+### Backlog de conhecimento do Dia 2
+
+| Pergunta | Por que importa | Entendimento atual | Fonte a consultar | Prioridade |
+| --- | --- | --- | --- | --- |
+| Como tratar identificadores dinâmicos quando parâmetros só representam valores? | Uma futura consulta pode escolher coluna ou ordenação. | Usar opções fixas permitidas no código; não concatenar um identificador arbitrário do cliente. | Documentação do Npgsql sobre parâmetros e um experimento local específico. | Média |
+| Quais privilégios mínimos o usuário do banco da API deve ter? | Reduzir impacto caso uma consulta falhe. | O usuário atual é de laboratório; seus privilégios não foram avaliados nesta etapa. | Documentação oficial do PostgreSQL sobre roles e grants. | Média |
+
+### Divulgação do Dia 2
+
+- **Insight e público:** para desenvolvedores de APIs, o erro acontece quando um valor entra na gramática da consulta; o teste mostra a diferença entre concatenar e parametrizar.
+- **Evidência compartilhável:** trecho de código, resultado 2 versus 0 IDs fictícios, teste normal e [investigação](experiments/sql-injection.md), sem senha ou conexão real no material.
+- **Limite da conclusão:** uma busca local de leitura foi testada; nenhuma exposição HTTP nem segurança geral da API foi demonstrada.
+- **Abertura e decisão:** [rascunho em inglês](posts/2026-10-08-day2-sql-injection-en.md) e [imagem](posts/assets/day2-input-as-data.png) preparados para revisão. A decisão de publicar é do autor.
