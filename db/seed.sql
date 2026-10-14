@@ -1,8 +1,15 @@
--- Fictional local data for the learning lab. No passwords or real identities.
+-- Fictional local data for the learning lab. No plaintext passwords or real identities.
 CREATE TABLE IF NOT EXISTS lab_users (
     id text PRIMARY KEY,
-    display_name text NOT NULL
+    display_name text NOT NULL,
+    login_name text UNIQUE,
+    password_hash text
 );
+
+-- Existing local volumes were created before the Day 3 credential columns.
+ALTER TABLE lab_users ADD COLUMN IF NOT EXISTS login_name text;
+ALTER TABLE lab_users ADD COLUMN IF NOT EXISTS password_hash text;
+CREATE UNIQUE INDEX IF NOT EXISTS lab_users_login_name_key ON lab_users (login_name);
 
 CREATE TABLE IF NOT EXISTS notes (
     id integer PRIMARY KEY,

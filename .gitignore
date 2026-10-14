@@ -16,3 +16,8 @@
 *.log
 *.dump
 *.sql.gz
+
+# Notas de estudo e rascunhos ficam no computador.
+/*.md
+!/README.md
+docs/
