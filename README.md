@@ -1,10 +1,10 @@
 # Vulnerable API Lab
 
-Este é meu laboratório de segurança de APIs em ASP.NET Core e PostgreSQL. Cada exercício usa dados fictícios e fica restrito ao computador local. Os exemplos deliberadamente inseguros existem apenas nos testes; a API executável não registra essas rotas.
+This is my API security lab built with ASP.NET Core and PostgreSQL. Each exercise uses fictional data and runs only on my local machine. Deliberately unsafe examples live in the tests; the running API does not expose those routes.
 
-## Executar
+## Run locally
 
-É necessário ter .NET 10, Docker Desktop com contêineres Linux e PowerShell. Na raiz do repositório:
+You need .NET 10, Docker Desktop with Linux containers, and PowerShell. From the repository root:
 
 ```powershell
 if (-not (Test-Path .env)) {
@@ -18,26 +18,26 @@ dotnet test tests/VulnerableApiLab.Api.Tests/VulnerableApiLab.Api.Tests.csproj
 dotnet run --project src/VulnerableApiLab.Api/VulnerableApiLab.Api.csproj --launch-profile local
 ```
 
-Em outro terminal, `Invoke-RestMethod http://127.0.0.1:5080/health` deve retornar `status: ok`. Uma leitura anônima em `/api/notes/1` deve retornar 401 no perfil local. O banco fica vinculado a `127.0.0.1:5433`, e a API a `127.0.0.1:5080`.
+In another terminal, `Invoke-RestMethod http://127.0.0.1:5080/health` should return `status: ok`. An anonymous request to `/api/notes/1` should return 401 in the local profile. PostgreSQL binds to `127.0.0.1:5433`, and the API binds to `127.0.0.1:5080`.
 
-O script [db/seed.sql](db/seed.sql) roda quando o volume é criado. Para atualizar um volume antigo sem apagá-lo:
+The [seed script](db/seed.sql) runs when the database volume is first created. To update an older volume without deleting its data:
 
 ```powershell
 Get-Content -Raw db/seed.sql | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U lab_user -d vulnerable_api_lab
 ```
 
-O arquivo `.env` fica fora do Git. Use somente contas e senhas fictícias. Não exponha este laboratório à rede pública.
+The `.env` file stays out of Git. Use only fictional accounts and passwords. Do not expose this lab to a public network.
 
-## O que está implementado
+## What the lab covers
 
-- [SQL injection](tests/VulnerableApiLab.Api.Tests/SqlInjectionTests.cs): o teste compara uma consulta concatenada sobre anotações fictícias com a busca parametrizada em [NoteLookup.cs](src/VulnerableApiLab.Api/NoteLookup.cs). A busca não tem rota HTTP.
-- [Autenticação](tests/VulnerableApiLab.Api.Tests/AuthenticationTests.cs): cadastro e login locais guardam hash de senha com sal. Uma senha errada recebe 401; uma sessão válida é verificada em `/api/auth/me`.
-- [Autorização por objeto](tests/VulnerableApiLab.Api.Tests/ObjectAuthorizationTests.cs): uma leitura apenas por ID encontra uma anotação de outro usuário no teste. A rota corrigida usa a identidade da sessão e o proprietário no banco: dono recebe 200, outro usuário 404, anônimo 401.
-- [Limite de tentativas](tests/VulnerableApiLab.Api.Tests/ApiAbuseTests.cs): o login local aceita três pedidos por IP em cinco segundos; o excesso recebe 429 e o acesso volta após a janela.
-- [Tratamento de erros](tests/VulnerableApiLab.Api.Tests/SecurityLayersTests.cs): uma falha simulada retorna 500 genérico, sem copiar o diagnóstico para a resposta ou os logs capturados.
+- [SQL injection](tests/VulnerableApiLab.Api.Tests/SqlInjectionTests.cs): a test compares a concatenated query over fictional notes with the parameterized lookup in [NoteLookup.cs](src/VulnerableApiLab.Api/NoteLookup.cs). The lookup has no HTTP route.
+- [Authentication](tests/VulnerableApiLab.Api.Tests/AuthenticationTests.cs): local registration and login store salted password hashes. An incorrect password returns 401; a valid session is checked through `/api/auth/me`.
+- [Object authorization](tests/VulnerableApiLab.Api.Tests/ObjectAuthorizationTests.cs): a test shows that looking up a note by ID alone can retrieve another user's note. The corrected route uses the session identity and the owner stored in the database: the owner gets 200, another user gets 404, and an anonymous caller gets 401.
+- [Login rate limiting](tests/VulnerableApiLab.Api.Tests/ApiAbuseTests.cs): local login allows three requests per IP in five seconds. Excess requests get 429, and access resumes after the window expires.
+- [Error handling](tests/VulnerableApiLab.Api.Tests/SecurityLayersTests.cs): a simulated failure returns a generic 500 without copying diagnostic details into the response or captured logs.
 
-As rotas de autenticação e leitura existem apenas em `Development` e aceitam somente loopback. Em `Production`, não há rotas de autenticação e a leitura de anotações fica fechada. Criação, edição e exclusão de anotações continuam em 403. Os testes com PostgreSQL exigem `LAB_DB_CONNECTION_STRING`; sem ela, esses testes são ignorados.
+Authentication and note reading exist only in `Development` and accept loopback requests only. In `Production`, authentication routes are absent and note reading remains closed. Note creation, updates, and deletion still return 403. PostgreSQL tests require `LAB_DB_CONNECTION_STRING`; without it, those tests are skipped.
 
-## Limites conhecidos
+## Known limits
 
-O usuário `lab_user` do banco ainda tem privilégios de superusuário; separar os papéis de instalação e execução é uma pendência. O limite de login fica em memória, agrupa pessoas pelo IP e não cobre cadastro. Não há teste de revogação de sessão nem autorização de escrita. A auditoria de dependências não foi concluída porque a fonte de advisories do NuGet estava inacessível. Os testes demonstram os comportamentos descritos nas condições locais, não segurança geral da API.
+The database role `lab_user` still has superuser privileges. Separating setup and runtime roles remains open work. Login rate limiting is in memory, groups users by IP, and does not cover registration. Session revocation and write authorization have not been tested. The dependency audit could not finish because the NuGet advisory source was unavailable. The tests establish the described behavior under local conditions, not overall API security.

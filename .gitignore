@@ -17,7 +17,7 @@
 *.dump
 *.sql.gz
 
-# Notas de estudo e rascunhos ficam no computador.
+# Study notes and drafts stay on the local machine.
 /*.md
 !/README.md
 docs/
